@@ -19,7 +19,7 @@ pub struct Flow {
 impl Default for Flow {
     fn default() -> Self {
         Flow {
-            num_particles: 5000,
+            num_particles: 10000,
             path_len: 300,
             curvature: 0.0,
             frequency: 0.0,
@@ -29,13 +29,6 @@ impl Default for Flow {
 }
 
 impl Flow {
-    /// Get the signum as integer
-    fn signum(&self) -> i8 {
-        match self.signum {
-            true => 1,
-            false => -1,
-        }
-    }
     fn make_single_path(
         &self,
         rng: &mut impl Rng,
@@ -68,7 +61,7 @@ impl<R: Rng> Algorithm<R> for Flow {
         let mut flow = vec![vec![0.0; img.height() as usize]; img.width() as usize];
         let mut perlin: Perlin = Perlin::new(img.width() as usize, img.height() as usize);
         perlin.regenerate_noise(rng);
-        self.signum = rng.gen_bool(0.5);
+        self.signum = rng.gen_bool(0.45);
         self.curvature = 0.3 + 0.1 * ((rng.gen::<u8>() as f64) / 0xff as f64);
         self.frequency = 0.003 + 0.003 * ((rng.gen::<u8>() as f64) / 0xff as f64);
         for _ in 0..self.num_particles {
@@ -78,12 +71,19 @@ impl<R: Rng> Algorithm<R> for Flow {
             .iter()
             .flatten()
             .fold(f64::NEG_INFINITY, |prev, curr| prev.max(*curr));
+        // Thanks, ChatGPT
         for (x, y, pixel) in img.enumerate_pixels_mut() {
-            let val: u8 = (256.0
-                + (self.signum() as f64) * (55.0 + 200.0 * flow[x as usize][y as usize] / max))
-                as u8;
+            let mut v = flow[x as usize][y as usize] / max;
+
+            // Strong gamma for near-black lines
+            v = v.powf(0.5);
+
+            // Convert to grayscale: background stays white, paths go black
+            let val = (255.0 * (1.0 - v)).clamp(0.0, 255.0) as u8;
+
             *pixel = Rgb([val, val, val]);
         }
+
         Ok(())
     }
 }
