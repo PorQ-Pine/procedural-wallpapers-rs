@@ -46,10 +46,10 @@ enum Mode {
 }
 
 impl Mode {
-    pub fn to_algorithm<R: Rng>(self) -> Box<dyn Algorithm<R>> {
+    pub fn to_algorithm<R: Rng>(self, flow_particles: u32) -> Box<dyn Algorithm<R>> {
         match self {
             Mode::Clouds => Box::new(Clouds {}),
-            Mode::Flow => Box::new(Flow::default()),
+            Mode::Flow => Box::new(Flow::new(flow_particles)),
             Mode::Islands => Box::new(Islands::default()),
             Mode::Lightning => Box::new(Lightning::default()),
             Mode::NearestPoint => Box::new(NearestPoint::default()),
@@ -81,6 +81,9 @@ struct Args {
     /// Desired height (pixels) of the generated image
     #[clap(short, long, value_parser, default_value_t = 1080)]
     height: u32,
+    /// Desired particles amount for mode 'flow'
+    #[clap(short, long, value_parser, default_value_t = 5000)]
+    flow_particles: u32,
     /// Seed for the random number generator. If a seed of 0 is given, no seed is used
     #[clap(short, long, value_parser, default_value_t = 0)]
     seed: i32,
@@ -95,7 +98,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let mut img: RgbImage = ImageBuffer::new(args.width, args.height);
-    let mut algorithm: Box<dyn Algorithm<ChaCha8Rng>> = args.mode.to_algorithm::<ChaCha8Rng>();
+    let mut algorithm: Box<dyn Algorithm<ChaCha8Rng>> = args.mode.to_algorithm::<ChaCha8Rng>(args.flow_particles);
     let mut rng = if args.seed != 0 {
         ChaCha8Rng::seed_from_u64(args.seed as u64)
     } else {
